@@ -7,15 +7,23 @@
 	aliases {
 		gpio0 = &rpmsg_gpioa;
 		gpio1 = &rpmsg_gpiob;
+		gpio2 = &rpmsg_gpioc;
 		i2c0 = &i2c_rpbus_0;
 		i2c1 = &i2c_rpbus_1;
-		pwm0 = &tpm_rpchip_0;
+		pwm3 = &tpm_rpchip_3;
 	};
 
 	wm8960_mclk: wm8960-mclk {
 		compatible = "fixed-clock";
 		clock-frequency = <12288000>;
 		clock-output-names = "wm8960_mclk";
+		#clock-cells = <0>;
+	};
+
+	da7212_mclk: da7212-mclk {
+		compatible = "fixed-clock";
+		clock-frequency = <12288000>;
+		clock-output-names = "da7212_mclk";
 		#clock-cells = <0>;
 	};
 
@@ -56,11 +64,29 @@
 		status = "okay";
 	};
 
+	rpmsg_gpioc: gpio@2 {
+		compatible = "fsl,imx-rpmsg-gpio";
+		port_idx = <2>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		#interrupt-cells = <2>;
+		interrupt-controller;
+		interrupt-parent = <&rpmsg_gpioc>;
+		status = "okay";
+	};
+
 	tpm_rpchip_0: pwm {
 		compatible = "fsl,pwm-rpchip";
 		#pwm-cells = <3>;
 		fsl,pwm-channel-number = <6>;
 		status = "disabled";
+	};
+
+	tpm_rpchip_3: pwm {
+		compatible = "fsl,pwm-rpchip";
+		#pwm-cells = <3>;
+		fsl,pwm-channel-number = <6>;
+		status = "okay";
 	};
 
 	rpmsg_sensor: rpmsg-sensor {
