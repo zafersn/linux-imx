@@ -19,6 +19,7 @@
 #include <linux/lockdep.h>
 #include <linux/iopoll.h>
 #include <linux/fwnode.h>
+#include <linux/android_kabi.h>
 
 struct module;
 struct clk;
@@ -282,7 +283,6 @@ typedef void (*regmap_unlock)(void *);
  * @disable_locking: This regmap is either protected by external means or
  *                   is guaranteed not to be accessed from multiple threads.
  *                   Don't use any locking mechanisms.
- * @disable_debugfs: Optional, don't create debugfs entries for this regmap.
  * @lock:	  Optional lock callback (overrides regmap's default lock
  *		  function, based on spinlock or mutex).
  * @unlock:	  As above for unlocking.
@@ -386,7 +386,6 @@ struct regmap_config {
 	bool (*readable_noinc_reg)(struct device *dev, unsigned int reg);
 
 	bool disable_locking;
-	bool disable_debugfs;
 	regmap_lock lock;
 	regmap_unlock unlock;
 	void *lock_arg;
@@ -439,6 +438,8 @@ struct regmap_config {
 	unsigned int hwlock_mode;
 
 	bool can_sleep;
+
+	ANDROID_KABI_RESERVE(1);
 };
 
 /**
@@ -476,6 +477,8 @@ struct regmap_range_cfg {
 	/* Data window (per each page) */
 	unsigned int window_start;
 	unsigned int window_len;
+
+	ANDROID_KABI_RESERVE(1);
 };
 
 struct regmap_async;
@@ -562,6 +565,8 @@ struct regmap_bus {
 	size_t max_raw_read;
 	size_t max_raw_write;
 	bool free_on_exit;
+
+	ANDROID_KABI_RESERVE(1);
 };
 
 /*

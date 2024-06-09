@@ -68,6 +68,10 @@
 #endif
 #define gcd4G_VA_FM_SIZE            0x40000000
 
+#ifndef gcdCONTEXT_SWITCH_FORCE_USC_RESET
+#define gcdCONTEXT_SWITCH_FORCE_USC_RESET 1
+#endif
+
 /*******************************************************************************
  ***** New MMU Defination ******************************************************/
 
@@ -357,5 +361,11 @@ gckMMU_SetupDynamicSpace(IN gckMMU Mmu);
 
 void
 gckMMU_DumpRecentFreedAddress(IN gckMMU Mmu);
+
+void
+gckMMU_CheckSaftPage(gckMMU Mmu);
+
+void
+gckMMU_DumpAddressSpace(gckMMU Mmu);
 
 #endif /* _gc_hal_kernel_mmu_h */

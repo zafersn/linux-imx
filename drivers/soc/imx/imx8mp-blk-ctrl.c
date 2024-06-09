@@ -591,7 +591,6 @@ static int imx8mp_blk_ctrl_probe(struct platform_device *pdev)
 		.reg_bits	= 32,
 		.val_bits	= 32,
 		.reg_stride	= 4,
-		.disable_debugfs = true,
 	};
 
 	bc = devm_kzalloc(dev, sizeof(*bc), GFP_KERNEL);
@@ -626,7 +625,7 @@ static int imx8mp_blk_ctrl_probe(struct platform_device *pdev)
 	if (!bc->onecell_data.domains)
 		return -ENOMEM;
 
-	bc->bus_power_dev = genpd_dev_pm_attach_by_name(dev, "bus");
+	bc->bus_power_dev = dev_pm_domain_attach_by_name(dev, "bus");
 	if (IS_ERR(bc->bus_power_dev))
 		return dev_err_probe(dev, PTR_ERR(bc->bus_power_dev),
 				     "failed to attach bus power domain\n");
@@ -701,6 +700,12 @@ static int imx8mp_blk_ctrl_probe(struct platform_device *pdev)
 	if (ret) {
 		dev_err_probe(dev, ret, "failed to add power domain provider\n");
 		goto cleanup_pds;
+	}
+
+	for (i = 0; i < bc_data->num_domains; i++) {
+		struct imx8mp_blk_ctrl_domain *domain = &bc->domains[i];
+
+		pm_genpd_add_subdomain(pd_to_genpd(bc->bus_power_dev->pm_domain), &domain->genpd);
 	}
 
 	bc->power_nb.notifier_call = bc_data->power_notifier_fn;
@@ -819,7 +824,7 @@ static const struct of_device_id imx8mp_blk_ctrl_of_match[] = {
 		/* Sentinel */
 	}
 };
-MODULE_DEVICE_TABLE(of, imx8m_blk_ctrl_of_match);
+MODULE_DEVICE_TABLE(of, imx8mp_blk_ctrl_of_match);
 
 static struct platform_driver imx8mp_blk_ctrl_driver = {
 	.probe = imx8mp_blk_ctrl_probe,
@@ -831,3 +836,4 @@ static struct platform_driver imx8mp_blk_ctrl_driver = {
 	},
 };
 module_platform_driver(imx8mp_blk_ctrl_driver);
+MODULE_LICENSE("GPL");

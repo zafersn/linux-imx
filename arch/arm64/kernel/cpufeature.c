@@ -212,7 +212,8 @@ static const struct arm64_ftr_bits ftr_id_aa64isar1[] = {
 };
 
 static const struct arm64_ftr_bits ftr_id_aa64isar2[] = {
-	ARM64_FTR_BITS(FTR_HIDDEN, FTR_STRICT, FTR_HIGHER_SAFE, ID_AA64ISAR2_EL1_BC_SHIFT, 4, 0),
+	ARM64_FTR_BITS(FTR_HIDDEN, FTR_STRICT, FTR_LOWER_SAFE, ID_AA64ISAR2_EL1_CLRBHB_SHIFT, 4, 0),
+	ARM64_FTR_BITS(FTR_HIDDEN, FTR_STRICT, FTR_LOWER_SAFE, ID_AA64ISAR2_EL1_BC_SHIFT, 4, 0),
 	ARM64_FTR_BITS(FTR_VISIBLE_IF_IS_ENABLED(CONFIG_ARM64_PTR_AUTH),
 		       FTR_STRICT, FTR_EXACT, ID_AA64ISAR2_EL1_APA3_SHIFT, 4, 0),
 	ARM64_FTR_BITS(FTR_VISIBLE_IF_IS_ENABLED(CONFIG_ARM64_PTR_AUTH),
@@ -949,6 +950,7 @@ init_cpu_hwcaps_indirect_list_from_array(const struct arm64_cpu_capabilities *ca
 }
 
 bool TKT340553_SW_WORKAROUND;
+EXPORT_SYMBOL_GPL(TKT340553_SW_WORKAROUND);
 static void __init init_cpu_hwcaps_indirect_list(void)
 {
 	init_cpu_hwcaps_indirect_list_from_array(arm64_features);
@@ -1471,6 +1473,7 @@ const struct cpumask *system_32bit_el0_cpumask(void)
 
 	return cpu_possible_mask;
 }
+EXPORT_SYMBOL_GPL(system_32bit_el0_cpumask);
 
 static int __init parse_32bit_el0_param(char *str)
 {

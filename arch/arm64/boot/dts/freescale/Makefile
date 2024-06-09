@@ -274,6 +274,7 @@ imx8qm-mek-revd-dsi-rm67199-dtbs := imx8qm-mek-dsi-rm67199.dtb imx8qm-mek-revd.d
 imx8qm-pcieax2pciebx1-revd-dtbs := imx8qm-pcieax2pciebx1.dtb imx8qm-mek-revd.dtbo
 imx8qm-mek-revd-esai-dtbs := imx8qm-mek-esai.dtb imx8qm-mek-revd.dtbo
 imx8qm-mek-revd-root-dtbs := imx8qm-mek-root.dtb imx8qm-mek-revd.dtbo
+imx8qm-mek-revd-md-dtbs := imx8qm-mek-md.dtb imx8qm-mek-revd.dtbo
 
 dtb-$(CONFIG_ARCH_MXC) += imx8qm-mek-revd.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx8qm-mek-revd-rpmsg.dtb
@@ -294,6 +295,7 @@ dtb-$(CONFIG_ARCH_MXC) += imx8qm-mek-revd-dsi-rm67199.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx8qm-pcieax2pciebx1-revd.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx8qm-mek-revd-esai.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx8qm-mek-revd-root.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx8qm-mek-revd-md.dtb
 
 dtb-$(CONFIG_ARCH_MXC) += imx8qxp-ai_ml.dtb
 dtb-$(CONFIG_ARCH_MXC) += imx8qxp-colibri-eval-v3.dtb
@@ -427,3 +429,17 @@ subdir-$(CONFIG_ARCH_MXC) += \
 	maaxboard \
 	maaxboard-mini \
 	maaxboard-8ulp
+
+dtb-$(CONFIG_ARCH_MXC) += imx8qm-mek-md.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx8mp-evk-powersave.dtb imx8mp-evk-powersave-non-rpmsg.dtb \
+                          imx8mp-evk-hifiberry-dacpp-m-rpmsg.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx8mq-evk-pcie1-m2-gki.dtb imx8mq-evk-lcdif-adv7535-gki.dtb \
+                          imx8mq-evk-dcss-rm67199-gki.dtb  imx8mq-evk-dcss-rm67191-gki.dtb \
+                          imx8mq-evk-dual-display-gki.dtb  imx8mq-evk-gki.dtb
+
+imx8mp-evk-revb4-powersave-non-rpmsg-dtbs := imx8mp-evk-powersave-non-rpmsg.dtb imx8mp-evk-revb4.dtbo
+
+dtb-$(CONFIG_ARCH_MXC) += imx8mp-evk-revb4-powersave-non-rpmsg.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx8mp-evk-revb4-powersave.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx8ulp-watch.dtb imx8ulp-evk-lpd.dtb imx8ulp-evk-g1120b0mipi.dtb
+dtb-$(CONFIG_ARCH_MXC) += imx8mm-evk-iw612.dtb

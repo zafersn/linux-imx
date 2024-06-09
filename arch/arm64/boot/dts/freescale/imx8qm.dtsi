@@ -247,7 +247,7 @@
 
 		opp-1056000000 {
 			opp-hz = /bits/ 64 <1056000000>;
-			opp-microvolt = <1000000>;
+			opp-microvolt = <1010000>;
 			clock-latency-ns = <150000>;
 		};
 
@@ -472,6 +472,12 @@
 					type = "critical";
 				};
 			};
+			cooling-maps {
+				map0 {
+					trip = <&gpu_alert0>;
+					cooling-device =<&imx8_gpu_ss 0 1>;
+				};
+			};
 		};
 
 		gpu-thermal1 {
@@ -488,6 +494,12 @@
 					temperature = <127000>;
 					hysteresis = <2000>;
 					type = "critical";
+				};
+			};
+			cooling-maps {
+				map0 {
+					trip = <&gpu_alert1>;
+					cooling-device =<&imx8_gpu_ss 0 1>;
 				};
 			};
 		};

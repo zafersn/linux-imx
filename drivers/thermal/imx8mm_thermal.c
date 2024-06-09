@@ -7,7 +7,6 @@
 
 #include <linux/bitfield.h>
 #include <linux/clk.h>
-#include <linux/device_cooling.h>
 #include <linux/err.h>
 #include <linux/io.h>
 #include <linux/module.h>
@@ -53,7 +52,6 @@ struct tmu_sensor {
 	struct imx8mm_tmu *priv;
 	u32 hw_id;
 	struct thermal_zone_device *tzd;
-	struct thermal_cooling_device *cdev;
 	int temp_passive;
 	int temp_critical;
 };
@@ -235,29 +233,6 @@ static int imx8mm_tmu_probe(struct platform_device *pdev)
 			goto disable_clk;
 		}
 		tmu->sensors[i].hw_id = i;
-
-		tmu->sensors[i].cdev = devfreq_cooling_register();
-		if (IS_ERR(tmu->sensors[i].cdev)) {
-			ret = PTR_ERR(tmu->sensors[i].cdev);
-			if (ret != -EPROBE_DEFER)
-				dev_err(&pdev->dev,
-					"failed to register devfreq cooling device %d\n", ret);
-			return ret;
-		}
-
-		ret = thermal_zone_bind_cooling_device(tmu->sensors[i].tzd,
-			IMX_TRIP_PASSIVE,
-			tmu->sensors[i].cdev,
-			THERMAL_NO_LIMIT,
-			THERMAL_NO_LIMIT,
-			THERMAL_WEIGHT_DEFAULT);
-		if (ret) {
-			dev_err(&pdev->dev,
-				"binding zone %s with cdev %s failed:%d\n",
-				tmu->sensors[i].tzd->type, tmu->sensors[i].cdev->type, ret);
-			devfreq_cooling_unregister(tmu->sensors[i].cdev);
-			return ret;
-		}
 
 		trips = of_thermal_get_trip_points(tmu->sensors[i].tzd);
 

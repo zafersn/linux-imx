@@ -1254,8 +1254,6 @@ static int imx6_pcie_ep_raise_irq(struct dw_pcie_ep *ep, u8 func_no,
 		return dw_pcie_ep_raise_legacy_irq(ep, func_no);
 	case PCI_EPC_IRQ_MSI:
 		return dw_pcie_ep_raise_msi_irq(ep, func_no, interrupt_num);
-	case PCI_EPC_IRQ_MSIX:
-		return dw_pcie_ep_raise_msix_irq(ep, func_no, interrupt_num);
 	default:
 		dev_err(pci->dev, "UNKNOWN IRQ type\n");
 		return -EINVAL;
@@ -1488,6 +1486,7 @@ static const struct dev_pm_ops imx6_pcie_pm_ops = {
 				  imx6_pcie_resume_noirq)
 };
 
+#ifndef MODULE
 static int __init imx6_pcie_compliance_test_enable(char *str)
 {
 	if (!strcmp(str, "yes")) {
@@ -1498,6 +1497,7 @@ static int __init imx6_pcie_compliance_test_enable(char *str)
 }
 
 __setup("pcie_cz_enabled=", imx6_pcie_compliance_test_enable);
+#endif
 
 static int imx6_pcie_probe(struct platform_device *pdev)
 {
@@ -1952,3 +1952,4 @@ static int __init imx6_pcie_init(void)
 	return platform_driver_register(&imx6_pcie_driver);
 }
 device_initcall(imx6_pcie_init);
+MODULE_LICENSE("GPL v2");

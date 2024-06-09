@@ -127,6 +127,25 @@ static const struct clk_ops imx8m_clk_composite_divider_ops = {
 	.set_rate = imx8m_clk_composite_divider_set_rate,
 };
 
+#ifdef CONFIG_CLK_POWER_SAVE
+static char *m4_lpa_required_ccm_slices[ ] = {"audio_ahb","i2c3","sai1","sai2","sai3","sai5","uart4","gic","gpt1","pwm3","m7_core","arm_m4_core","audio_axi","ecspi2","dram_alt","dram_apb"};
+#endif
+
+static bool m4_lpa_required(const char *name){
+#ifdef CONFIG_CLK_POWER_SAVE
+	int i;
+
+	for(i = 0; i < sizeof(m4_lpa_required_ccm_slices) / sizeof(m4_lpa_required_ccm_slices[0]); i++){
+		if (strstr(m4_lpa_required_ccm_slices[i], name) != NULL)
+			return true;
+	}
+
+	return false;
+#else
+	return true;
+#endif
+}
+
 static u8 imx8m_clk_composite_mux_get_parent(struct clk_hw *hw)
 {
 	return clk_mux_ops.get_parent(hw);
@@ -186,6 +205,7 @@ struct clk_hw *__imx8m_clk_hw_composite(const char *name,
 	struct clk_mux *mux = NULL;
 	const struct clk_ops *divider_ops;
 	const struct clk_ops *mux_ops;
+	u32 val;
 
 	mux = kzalloc(sizeof(*mux), GFP_KERNEL);
 	if (!mux)
@@ -208,25 +228,41 @@ struct clk_hw *__imx8m_clk_hw_composite(const char *name,
 		div->width = PCG_CORE_DIV_WIDTH;
 		divider_ops = &clk_divider_ops;
 		mux_ops = &imx8m_clk_composite_mux_ops;
+		if (!(flags & CLK_IS_CRITICAL) && !(mcore_booted && m4_lpa_required(name))) {
+			val = readl(reg);
+			val &= ~BIT(PCG_CGC_SHIFT);
+			writel(val, reg);
+		}
 	} else if (composite_flags & IMX_COMPOSITE_BUS) {
 		div->shift = PCG_PREDIV_SHIFT;
 		div->width = PCG_PREDIV_WIDTH;
 		divider_ops = &imx8m_clk_composite_divider_ops;
 		mux_ops = &imx8m_clk_composite_mux_ops;
+		if (!(flags & CLK_IS_CRITICAL) && !(mcore_booted && m4_lpa_required(name))) {
+			val = readl(reg);
+			val &= ~BIT(PCG_CGC_SHIFT);
+			writel(val, reg);
+		}
 	} else {
 		div->shift = PCG_PREDIV_SHIFT;
 		div->width = PCG_PREDIV_WIDTH;
 		divider_ops = &imx8m_clk_composite_divider_ops;
 		mux_ops = &clk_mux_ops;
-		if (!(composite_flags & IMX_COMPOSITE_FW_MANAGED))
+		if (!(composite_flags & IMX_COMPOSITE_FW_MANAGED)){
 			flags |= CLK_SET_PARENT_GATE;
+			if (!(flags & CLK_IS_CRITICAL) && !(mcore_booted && m4_lpa_required(name))) {
+				val = readl(reg);
+				val &= ~BIT(PCG_CGC_SHIFT);
+				writel(val, reg);
+			}
+		}
 	}
 
 	div->lock = &imx_ccm_lock;
 	div->flags = CLK_DIVIDER_ROUND_CLOSEST;
 
 	/* skip registering the gate ops if M4 is enabled */
-	if (!mcore_booted) {
+	if (!mcore_booted || !m4_lpa_required(name)) {
 		gate = kzalloc(sizeof(*gate), GFP_KERNEL);
 		if (!gate)
 			goto fail;

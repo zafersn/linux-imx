@@ -13,6 +13,7 @@
 #include <linux/extcon.h>
 #include <linux/notifier.h>
 #include <linux/usb.h>
+#include <linux/android_kabi.h>
 #include <uapi/linux/usb/charger.h>
 
 enum usb_phy_interface {
@@ -61,13 +62,6 @@ enum usb_otg_state {
 	OTG_STATE_A_PERIPHERAL,
 	OTG_STATE_A_WAIT_VFALL,
 	OTG_STATE_A_VBUS_ERR,
-};
-
-/* The usb role of phy to be working with */
-enum usb_current_mode {
-	CUR_USB_MODE_NONE,
-	CUR_USB_MODE_HOST,
-	CUR_USB_MODE_DEVICE,
 };
 
 struct usb_phy;
@@ -163,14 +157,17 @@ struct usb_phy {
 	 */
 	enum usb_charger_type (*charger_detect)(struct usb_phy *x);
 
-	int	(*notify_suspend)(struct usb_phy *x,
-			enum usb_device_speed speed);
-	int	(*notify_resume)(struct usb_phy *x,
-			enum usb_device_speed speed);
-
-	int	(*set_mode)(struct usb_phy *x,
-			enum usb_current_mode mode);
-
+	/*
+	 * Reserved slot 0 here is seserved for a notify_port_status callback addition that narrowly
+	 * missed the ABI freeze deadline due to upstream review disussions.  See
+	 * https://lore.kernel.org/linux-usb/20230607062500.24669-1-stanley_chang@realtek.com/
+	 * for details.  All other slots are for "normal" future ABI breaks in LTS updates
+	 */
+	ANDROID_KABI_RESERVE(0);
+	ANDROID_KABI_RESERVE(1);
+	ANDROID_KABI_RESERVE(2);
+	ANDROID_KABI_RESERVE(3);
+	ANDROID_KABI_RESERVE(4);
 };
 
 /* for board-specific init logic */
@@ -227,15 +224,6 @@ usb_phy_vbus_off(struct usb_phy *x)
 		return 0;
 
 	return x->set_vbus(x, false);
-}
-
-static inline int
-usb_phy_set_mode(struct usb_phy *x, enum usb_current_mode mode)
-{
-	if (!x || !x->set_mode)
-		return 0;
-
-	return x->set_mode(x, mode);
 }
 
 /* for usb host and peripheral controller drivers */
@@ -355,24 +343,6 @@ usb_phy_notify_disconnect(struct usb_phy *x, enum usb_device_speed speed)
 {
 	if (x && x->notify_disconnect)
 		return x->notify_disconnect(x, speed);
-	else
-		return 0;
-}
-
-static inline int usb_phy_notify_suspend
-	(struct usb_phy *x, enum usb_device_speed speed)
-{
-	if (x && x->notify_suspend)
-		return x->notify_suspend(x, speed);
-	else
-		return 0;
-}
-
-static inline int usb_phy_notify_resume
-	(struct usb_phy *x, enum usb_device_speed speed)
-{
-	if (x && x->notify_resume)
-		return x->notify_resume(x, speed);
 	else
 		return 0;
 }

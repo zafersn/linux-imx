@@ -566,6 +566,9 @@ static int ieee80211_add_key(struct wiphy *wiphy, struct net_device *dev,
 	}
 
 	err = ieee80211_key_link(key, link, sta);
+	/* KRACK protection, shouldn't happen but just silently accept key */
+	if (err == -EALREADY)
+		err = 0;
 
  out_unlock:
 	mutex_unlock(&local->sta_mtx);
@@ -3556,7 +3559,8 @@ static int __ieee80211_csa_finalize(struct ieee80211_sub_if_data *sdata)
 	if (err)
 		return err;
 
-	cfg80211_ch_switch_notify(sdata->dev, &sdata->deflink.csa_chandef, 0);
+	cfg80211_ch_switch_notify(sdata->dev, &sdata->deflink.csa_chandef, 0,
+				  0);
 
 	return 0;
 }
@@ -3828,7 +3832,7 @@ __ieee80211_channel_switch(struct wiphy *wiphy, struct net_device *dev,
 
 	cfg80211_ch_switch_started_notify(sdata->dev,
 					  &sdata->deflink.csa_chandef, 0,
-					  params->count, params->block_tx);
+					  params->count, params->block_tx, 0);
 
 	if (changed) {
 		ieee80211_link_info_change_notify(sdata, &sdata->deflink,

@@ -40,7 +40,9 @@ enum phy_mode {
 	PHY_MODE_UFS_HS_B,
 	PHY_MODE_PCIE,
 	PHY_MODE_ETHERNET,
+#ifndef CONFIG_IMX_GKI_FIX
 	PHY_MODE_ETHERNET_LINKMODE,
+#endif
 	PHY_MODE_MIPI_DPHY,
 	PHY_MODE_SATA,
 	PHY_MODE_LVDS,
@@ -121,7 +123,9 @@ union phy_configure_opts {
 	struct phy_configure_opts_mipi_dphy	mipi_dphy;
 	struct phy_configure_opts_dp		dp;
 	struct phy_configure_opts_lvds		lvds;
+#ifndef CONFIG_IMX_GKI_FIX
 	struct phy_configure_opts_ethernet	ethernet;
+#endif
 };
 
 /**
@@ -192,8 +196,10 @@ struct phy_ops {
 	 * Returns: 0 if the operation was successful, negative error code
 	 * otherwise.
 	 */
+#ifndef CONFIG_IMX_GKI_FIX
 	int	(*get_status)(struct phy *phy, enum phy_status_type type,
 			      union phy_status_opts *opts);
+#endif
 	void	(*release)(struct phy *phy);
 	struct module *owner;
 };
@@ -286,8 +292,6 @@ static inline void *phy_get_drvdata(struct phy *phy)
 {
 	return dev_get_drvdata(&phy->dev);
 }
-
-extern struct dentry *phy_debugfs_root;
 
 #if IS_ENABLED(CONFIG_GENERIC_PHY)
 int phy_pm_runtime_get(struct phy *phy);

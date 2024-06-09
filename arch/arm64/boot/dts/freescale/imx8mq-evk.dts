@@ -1268,3 +1268,5 @@
 		};
 	};
 };
+
+#include "imx8mq-android.dtsi"

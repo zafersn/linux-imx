@@ -364,7 +364,7 @@
  *       Number of bytes in a command buffer.
  */
 #ifndef gcdCMD_BUFFER_SIZE
-#if gcdCAPTURE_ONLY_MODE
+#if 0
 #        define gcdCMD_BUFFER_SIZE                  (4 << 10)
 #    else
 #        define gcdCMD_BUFFER_SIZE                  (128 << 10)
@@ -386,7 +386,7 @@
  *       Number of command buffers to use per client.
  */
 #ifndef gcdCMD_BUFFERS
-#if gcdCAPTURE_ONLY_MODE
+#if 0
 #        define gcdCMD_BUFFERS                      1
 #    else
 #        define gcdCMD_BUFFERS                      2
@@ -569,11 +569,7 @@
  *   For CAPTURE ONLY MODE, should make sure that gcdENABLE_BANK_ALIGNMENT is disabled.
  */
 #ifndef gcdENABLE_BANK_ALIGNMENT
-#if gcdCAPTURE_ONLY_MODE
 #        define gcdENABLE_BANK_ALIGNMENT            0
-#    else
-#        define gcdENABLE_BANK_ALIGNMENT            0
-#    endif
 #endif
 
 /*
@@ -1534,6 +1530,20 @@
 #    define gcdENABLE_VIDEO_MEMORY_TRACE            1
 #    else
 #    define gcdENABLE_VIDEO_MEMORY_TRACE            0
+#    endif
+#endif
+
+/*
+ *   gcdENABLE_GPU_WORK_PERIOD_TRACE
+ *       Creat tracepoint power/gpu_work_period, if set to 1.
+ *       Depends on kernel support.
+ *       Only support Linux OS currently.
+ */
+#ifndef gcdENABLE_GPU_WORK_PERIOD_TRACE
+#ifdef gcdANDROID
+#    define gcdENABLE_GPU_WORK_PERIOD_TRACE         1
+#    else
+#    define gcdENABLE_GPU_WORK_PERIOD_TRACE         0
 #    endif
 #endif
 

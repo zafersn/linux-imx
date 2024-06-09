@@ -4,7 +4,6 @@
  */
 
 #include <dt-bindings/firmware/imx/rsrc.h>
-#include <linux/device_cooling.h>
 #include <linux/err.h>
 #include <linux/firmware/imx/sci.h>
 #include <linux/module.h>
@@ -25,7 +24,6 @@ static struct imx_sc_ipc *thermal_ipc_handle;
 struct imx_sc_sensor {
 	struct thermal_zone_device *tzd;
 	u32 resource_id;
-	struct thermal_cooling_device *cdev;
 	int temp_passive;
 	int temp_critical;
 };
@@ -148,7 +146,6 @@ static int imx_sc_thermal_probe(struct platform_device *pdev)
 		return -EINVAL;
 
 	for (i = 0; resource_id[i] >= 0; i++) {
-
 		sensor = devm_kzalloc(&pdev->dev, sizeof(*sensor), GFP_KERNEL);
 		if (!sensor)
 			return -ENOMEM;
@@ -185,30 +182,12 @@ static int imx_sc_thermal_probe(struct platform_device *pdev)
 		trip = of_thermal_get_trip_points(sensor->tzd);
 		sensor->temp_passive = trip[0].temperature;
 		sensor->temp_critical = trip[1].temperature;
-
-		sensor->cdev = devfreq_cooling_register();
-		if (IS_ERR(sensor->cdev)) {
-			dev_err(&pdev->dev,
-				"failed to register devfreq cooling device: %d\n",
-				ret);
-			return ret;
-		}
-
-		ret = thermal_zone_bind_cooling_device(sensor->tzd,
-			IMX_TRIP_PASSIVE,
-			sensor->cdev,
-			THERMAL_NO_LIMIT,
-			THERMAL_NO_LIMIT,
-			THERMAL_WEIGHT_DEFAULT);
-		if (ret) {
-			dev_err(&sensor->tzd->device,
-				"binding zone %s with cdev %s failed:%d\n",
-				sensor->tzd->type, sensor->cdev->type, ret);
-			devfreq_cooling_unregister(sensor->cdev);
-			return ret;
-		}
 	}
+	return 0;
+}
 
+static int imx_sc_thermal_remove(struct platform_device *pdev)
+{
 	return 0;
 }
 
@@ -226,6 +205,7 @@ MODULE_DEVICE_TABLE(of, imx_sc_thermal_table);
 
 static struct platform_driver imx_sc_thermal_driver = {
 		.probe = imx_sc_thermal_probe,
+		.remove	= imx_sc_thermal_remove,
 		.driver = {
 			.name = "imx-sc-thermal",
 			.of_match_table = imx_sc_thermal_table,

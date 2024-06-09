@@ -28,8 +28,6 @@
 #include <media/videobuf2-v4l2.h>
 #include <media/v4l2-mc.h>
 #include <media/v4l2-mem2mem.h>
-#include <media/v4l2-chip-ident.h>
-#include <media/videobuf2-core.h>
 
 #include <trace/events/v4l2.h>
 
@@ -656,20 +654,6 @@ static void v4l_print_decoder_cmd(const void *arg, bool write_only)
 				p->start.speed, p->start.format);
 	else if (p->cmd == V4L2_DEC_CMD_STOP)
 		pr_info("pts=%llu\n", p->stop.pts);
-}
-
-static void v4l_print_dbg_chip_ident(const void *arg, bool write_only)
-{
-	const struct v4l2_dbg_chip_ident *p = arg;
-
-	pr_cont("type=%u, ", p->match.type);
-	if (p->match.type == V4L2_CHIP_MATCH_I2C_DRIVER)
-		pr_cont("name=%.*s, ",
-				(int)sizeof(p->match.name), p->match.name);
-	else
-		pr_cont("addr=%u, ", p->match.addr);
-	pr_cont("chip_ident=%u, revision=0x%x\n",
-			p->ident, p->revision);
 }
 
 static void v4l_print_dbg_chip_info(const void *arg, bool write_only)
@@ -1327,7 +1311,7 @@ static void v4l_fill_fmtdesc(struct v4l2_fmtdesc *fmt)
 	case V4L2_PIX_FMT_Y6:		descr = "6-bit Greyscale"; break;
 	case V4L2_PIX_FMT_Y10:		descr = "10-bit Greyscale"; break;
 	case V4L2_PIX_FMT_Y12:		descr = "12-bit Greyscale"; break;
-	case V4L2_PIX_FMT_Y012:		descr = "12-bit Greyscale"; break;
+	case V4L2_PIX_FMT_Y012:		descr = "12-bit Greyscale (bits 15-4)"; break;
 	case V4L2_PIX_FMT_Y14:		descr = "14-bit Greyscale"; break;
 	case V4L2_PIX_FMT_Y16:		descr = "16-bit Greyscale"; break;
 	case V4L2_PIX_FMT_Y16_BE:	descr = "16-bit Greyscale BE"; break;
@@ -1367,7 +1351,6 @@ static void v4l_fill_fmtdesc(struct v4l2_fmtdesc *fmt)
 	case V4L2_PIX_FMT_HI240:	descr = "8-bit Dithered RGB (BTTV)"; break;
 	case V4L2_PIX_FMT_M420:		descr = "YUV 4:2:0 (M420)"; break;
 	case V4L2_PIX_FMT_YUV48_12:	descr = "12-bit YUV 4:4:4 Packed"; break;
-	case V4L2_PIX_FMT_Y212:		descr = "12-bit Depth YUYV 4:2:2"; break;
 	case V4L2_PIX_FMT_NV12:		descr = "Y/UV 4:2:0"; break;
 	case V4L2_PIX_FMT_NV21:		descr = "Y/VU 4:2:0"; break;
 	case V4L2_PIX_FMT_NV16:		descr = "Y/UV 4:2:2"; break;
@@ -1471,6 +1454,9 @@ static void v4l_fill_fmtdesc(struct v4l2_fmtdesc *fmt)
 	case V4L2_PIX_FMT_NV12M_8L128:	descr = "NV12M (8x128 Linear)"; break;
 	case V4L2_PIX_FMT_NV12_10BE_8L128:	descr = "10-bit NV12 (8x128 Linear, BE)"; break;
 	case V4L2_PIX_FMT_NV12M_10BE_8L128:	descr = "10-bit NV12M (8x128 Linear, BE)"; break;
+	case V4L2_PIX_FMT_Y210:		descr = "10-bit YUYV Packed"; break;
+	case V4L2_PIX_FMT_Y212:		descr = "12-bit YUYV Packed"; break;
+	case V4L2_PIX_FMT_Y216:		descr = "16-bit YUYV Packed"; break;
 
 	default:
 		/* Compressed formats */
@@ -2622,18 +2608,6 @@ static int v4l_dbg_s_register(const struct v4l2_ioctl_ops *ops,
 #endif
 }
 
-static int v4l_dbg_g_chip_ident(const struct v4l2_ioctl_ops *ops,
-				struct file *file, void *fh, void *arg)
-{
-	struct v4l2_dbg_chip_ident *p = arg;
-
-	p->ident = V4L2_IDENT_NONE;
-	p->revision = 0;
-	if (p->match.type == V4L2_CHIP_MATCH_SUBDEV)
-		return -EINVAL;
-	return ops->vidioc_g_chip_ident(file, fh, p);
-}
-
 static int v4l_dbg_g_chip_info(const struct v4l2_ioctl_ops *ops,
 				struct file *file, void *fh, void *arg)
 {
@@ -2909,7 +2883,6 @@ static const struct v4l2_ioctl_info v4l2_ioctls[] = {
 	IOCTL_INFO(VIDIOC_TRY_DECODER_CMD, v4l_stub_try_decoder_cmd, v4l_print_decoder_cmd, 0),
 	IOCTL_INFO(VIDIOC_DBG_S_REGISTER, v4l_dbg_s_register, v4l_print_dbg_register, 0),
 	IOCTL_INFO(VIDIOC_DBG_G_REGISTER, v4l_dbg_g_register, v4l_print_dbg_register, 0),
-	IOCTL_INFO(VIDIOC_DBG_G_CHIP_IDENT, v4l_dbg_g_chip_ident, v4l_print_dbg_chip_ident, 0),
 	IOCTL_INFO(VIDIOC_S_HW_FREQ_SEEK, v4l_s_hw_freq_seek, v4l_print_hw_freq_seek, INFO_FL_PRIO),
 	IOCTL_INFO(VIDIOC_S_DV_TIMINGS, v4l_stub_s_dv_timings, v4l_print_dv_timings, INFO_FL_PRIO | INFO_FL_CLEAR(v4l2_dv_timings, bt.flags)),
 	IOCTL_INFO(VIDIOC_G_DV_TIMINGS, v4l_stub_g_dv_timings, v4l_print_dv_timings, 0),

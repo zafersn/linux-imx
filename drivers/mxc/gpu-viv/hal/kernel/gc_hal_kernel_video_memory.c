@@ -859,11 +859,9 @@ gckVIDMEM_AllocateLinear(IN gckKERNEL Kernel, IN gckVIDMEM Memory,
     acquired = gcvTRUE;
 
 #if defined(__QNXNTO__)
-    if (Flag & gcvALLOC_FLAG_CMA_LIMIT)
-    {
+    if (Flag & gcvALLOC_FLAG_CMA_LIMIT) {
         if ((Memory->physicalBase > UINT32_MAX) ||
-            ((Memory->physicalBase + Memory->bytes) > UINT32_MAX))
-        {
+            ((Memory->physicalBase + Memory->bytes) > UINT32_MAX)) {
             /* Pool is allocated above 4G limit */
             status = gcvSTATUS_OUT_OF_MEMORY;
             goto OnError;
@@ -880,21 +878,19 @@ gckVIDMEM_AllocateLinear(IN gckKERNEL Kernel, IN gckVIDMEM Memory,
         gcmkVERIFY_OK(gckOS_GetProcessID(&pid));
 
         if (Memory->freeBytes < lowwaterFPC) {
-            if (Memory->freeBytes < slogLowWaterFPC) {
+            if (Memory->freeBytes < slogLowWaterFPC)
                 do_slog_now = 1;
-            }
             lowwaterFPC = Memory->freeBytes;
         }
 
-        if (abs(this_slog_time - last_slog_time) > slogUsageInterval) {
+        if (abs(this_slog_time - last_slog_time) > slogUsageInterval)
             do_slog_now = 1;
-        }
 
         if (do_slog_now) {
             last_slog_time = this_slog_time;
             slogf(_SLOGC_GRAPHICS_GL, _SLOG_INFO, "%s: Memory->freeBytes = %u, lowest Memory->freeBytes = %u. "
                     "Handling message from pid: %u. Requested bytes: %zu",
-                    __FUNCTION__, (unsigned) Memory->freeBytes, (unsigned) lowwaterFPC, pid, Bytes);
+                    __FUNCTION__, (unsigned int)Memory->freeBytes, (unsigned int)lowwaterFPC, pid, Bytes);
         }
     }
 #endif
@@ -1900,13 +1896,26 @@ gckVIDMEM_Free(IN gckKERNEL Kernel, IN gcuVIDMEM_NODE_PTR Node)
 
         if (Node->VidMem.kvaddr) {
 #if gcdCAPTURE_ONLY_MODE
-            gcmkVERIFY_OK(gcmkOS_SAFE_FREE(Kernel->os, Node->VidMem.kvaddr));
+            gcsDATABASE_PTR database = gcvNULL;
+            gctUINT32 processID;
+
+            gcmkONERROR(gckOS_GetProcessID(&processID));
+
+            if (processID)
+                gckKERNEL_FindDatabase(Kernel, processID, gcvFALSE, &database);
+
+            if (database && database->matchCaptureOnly) {
+                gcmkVERIFY_OK(gcmkOS_SAFE_FREE(Kernel->os, Node->VidMem.kvaddr));
+            } else {
+                gcmkONERROR(gckOS_DestroyKernelMapping(Kernel->os,
+                                                           Node->VidMem.parent->physical,
+                                                           Node->VidMem.kvaddr));
+            }
 #else
             gcmkONERROR(gckOS_DestroyKernelMapping(Kernel->os,
-                                                   Node->VidMem.parent->physical,
-                                                   Node->VidMem.kvaddr));
+                                                       Node->VidMem.parent->physical,
+                                                       Node->VidMem.kvaddr));
 #endif
-
             Node->VidMem.kvaddr = gcvNULL;
         }
 
@@ -2004,90 +2013,85 @@ gckVIDMEM_Free(IN gckKERNEL Kernel, IN gcuVIDMEM_NODE_PTR Node)
         gcmkFOOTER_NO();
         return gcvSTATUS_OK;
     } else if (vidMemBlock && vidMemBlock->object.type == gcvOBJ_VIDMEM_BLOCK) {
+        gckOS os = vidMemBlock->os;
+
+        kernel = Node->VirtualChunk.kernel;
+
         /* Acquire the vidMem block mutex */
-        gcmkONERROR(gckOS_AcquireMutex(Kernel->os,
-                                       Kernel->vidMemBlockMutex,
+        gcmkONERROR(gckOS_AcquireMutex(kernel->os,
+                                       kernel->vidMemBlockMutex,
                                        gcvINFINITE));
         vbListMutexAcquired = gcvTRUE;
 
-        if (vidMemBlock) {
-            gckOS os = vidMemBlock->os;
+        gcmkONERROR(gckOS_AcquireMutex(os, vidMemBlock->mutex, gcvINFINITE));
+        vbMutexAcquired = gcvTRUE;
 
-            gcmkONERROR(gckOS_AcquireMutex(os, vidMemBlock->mutex, gcvINFINITE));
-            vbMutexAcquired = gcvTRUE;
-            kernel          = Node->VirtualChunk.kernel;
+        if (Node->VirtualChunk.kvaddr) {
+            gcmkONERROR(gckOS_DestroyKernelMapping(kernel->os,
+                                                    vidMemBlock->physical,
+                                                    Node->VirtualChunk.kvaddr));
 
-            if (Kernel != kernel) {
-                gcmkFATAL("ERROR: You allocate vidMemBLock on core[%d], but try to free it on core[%d]",
-                          kernel->core, Kernel->core);
+            Node->VirtualChunk.kvaddr = gcvNULL;
+        }
+
+        /* Handle the free chunk in the linked-list */
+        {
+            /* Check if chunk is in free list. */
+            if (Node->VirtualChunk.nextFree) {
+                /* Chunk is already freed. */
+                gcmkONERROR(gcvSTATUS_INVALID_DATA);
             }
 
-            if (Node->VirtualChunk.kvaddr) {
-                gcmkONERROR(gckOS_DestroyKernelMapping(kernel->os,
-                                                       vidMemBlock->physical,
-                                                       Node->VirtualChunk.kvaddr));
+            vidMemBlock->freeBytes += Node->VirtualChunk.bytes;
 
-                Node->VirtualChunk.kvaddr = gcvNULL;
+            /* Find the next free chunk. */
+            for (node = Node->VirtualChunk.next;
+                    node != gcvNULL && node->VirtualChunk.nextFree == gcvNULL;
+                    node = node->VirtualChunk.next)
+                ;
+
+            if (node == gcvNULL)
+                gcmkONERROR(gcvSTATUS_INVALID_DATA);
+
+            /* Insert this chunk in the free list. */
+            Node->VirtualChunk.nextFree = node;
+            Node->VirtualChunk.prevFree = node->VirtualChunk.prevFree;
+
+            Node->VirtualChunk.prevFree->VirtualChunk.nextFree =
+            node->VirtualChunk.prevFree = Node;
+
+            /* Is the next chunk a free chunk. */
+            if (Node->VirtualChunk.next == Node->VirtualChunk.nextFree &&
+                Node->VirtualChunk.next->VirtualChunk.bytes != 0) {
+                /* Merge this chunk with the next chunk. */
+                gcmkONERROR(_MergeVirtualChunk(os, node = Node));
+                gcmkASSERT(node->VirtualChunk.nextFree != node);
+                gcmkASSERT(node->VirtualChunk.prevFree != node);
             }
 
-            /* Handle the free chunk in the linked-list */
-            {
-                /* Check if chunk is in free list. */
-                if (Node->VirtualChunk.nextFree) {
-                    /* Chunk is already freed. */
-                    gcmkONERROR(gcvSTATUS_INVALID_DATA);
-                }
-
-                vidMemBlock->freeBytes += Node->VirtualChunk.bytes;
-
-                /* Find the next free chunk. */
-                for (node = Node->VirtualChunk.next;
-                     node != gcvNULL && node->VirtualChunk.nextFree == gcvNULL;
-                     node = node->VirtualChunk.next)
-                    ;
-
-                if (node == gcvNULL)
-                    gcmkONERROR(gcvSTATUS_INVALID_DATA);
-
-                /* Insert this chunk in the free list. */
-                Node->VirtualChunk.nextFree = node;
-                Node->VirtualChunk.prevFree = node->VirtualChunk.prevFree;
-
-                Node->VirtualChunk.prevFree->VirtualChunk.nextFree =
-                node->VirtualChunk.prevFree = Node;
-
-                /* Is the next chunk a free chunk. */
-                if (Node->VirtualChunk.next == Node->VirtualChunk.nextFree &&
-                    Node->VirtualChunk.next->VirtualChunk.bytes != 0) {
-                    /* Merge this chunk with the next chunk. */
-                    gcmkONERROR(_MergeVirtualChunk(os, node = Node));
-                    gcmkASSERT(node->VirtualChunk.nextFree != node);
-                    gcmkASSERT(node->VirtualChunk.prevFree != node);
-                }
-
-                /* Is the previous chunk a free chunk. */
-                if (Node->VirtualChunk.prev == Node->VirtualChunk.prevFree &&
-                    Node->VirtualChunk.prev->VirtualChunk.bytes != 0) {
-                    /* Merge this chunk with the previous chunk. */
-                    gcmkONERROR(_MergeVirtualChunk(os, node = Node->VirtualChunk.prev));
-                    gcmkASSERT(node->VirtualChunk.nextFree != node);
-                    gcmkASSERT(node->VirtualChunk.prevFree != node);
-                }
-            }
-
-            /* Release the mutex. */
-            gcmkVERIFY_OK(gckOS_ReleaseMutex(os, vidMemBlock->mutex));
-
-            /* Only free the vidmem block when all the chunks are freed. */
-            if (_IsVidMemBlockFree(vidMemBlock)) {
-                gcmkONERROR(_RemoveFromBlockList(kernel, vidMemBlock));
-
-                gcmkONERROR(gckVIDMEM_BLOCK_Destroy(kernel, vidMemBlock));
+            /* Is the previous chunk a free chunk. */
+            if (Node->VirtualChunk.prev == Node->VirtualChunk.prevFree &&
+                Node->VirtualChunk.prev->VirtualChunk.bytes != 0) {
+                /* Merge this chunk with the previous chunk. */
+                gcmkONERROR(_MergeVirtualChunk(os, node = Node->VirtualChunk.prev));
+                gcmkASSERT(node->VirtualChunk.nextFree != node);
+                gcmkASSERT(node->VirtualChunk.prevFree != node);
             }
         }
 
+        /* Release the mutex. */
+        gcmkVERIFY_OK(gckOS_ReleaseMutex(os, vidMemBlock->mutex));
+        vbMutexAcquired = gcvFALSE;
+
+        /* Only free the vidmem block when all the chunks are freed. */
+        if (_IsVidMemBlockFree(vidMemBlock)) {
+            gcmkONERROR(_RemoveFromBlockList(kernel, vidMemBlock));
+
+            gcmkONERROR(gckVIDMEM_BLOCK_Destroy(kernel, vidMemBlock));
+        }
+
         /* Release the vidMem block mutex. */
-        gcmkVERIFY_OK(gckOS_ReleaseMutex(Kernel->os, Kernel->vidMemBlockMutex));
+        gcmkVERIFY_OK(gckOS_ReleaseMutex(kernel->os, kernel->vidMemBlockMutex));
 
         /* Success. */
         gcmkFOOTER_NO();
@@ -2148,7 +2152,7 @@ OnError:
 
     if (vbListMutexAcquired) {
         gcmkVERIFY_OK(gckOS_ReleaseMutex(vidMemBlock->os,
-                                         Kernel->vidMemBlockMutex));
+                                         kernel->vidMemBlockMutex));
     }
 
     /* Return the status. */
@@ -2190,6 +2194,11 @@ gckVIDMEM_Lock(IN gckKERNEL Kernel,
     if (Node->VidMem.locked++ == 0) {
         gctADDRESS address;
         gctADDRESS offset = (gctADDRESS)Node->VidMem.offset;
+#if gcdCAPTURE_ONLY_MODE
+        gcsDATABASE_PTR database = gcvNULL;
+        gctUINT32 processID;
+#endif
+
 
         switch (Node->VidMem.pool) {
         case gcvPOOL_LOCAL_EXCLUSIVE:
@@ -2216,7 +2225,20 @@ gckVIDMEM_Lock(IN gckKERNEL Kernel,
             /* FALLTHRU */
             gcmkFALLTHRU;
         case gcvPOOL_SYSTEM:
+#if gcdCAPTURE_ONLY_MODE
+            gcmkONERROR(gckOS_GetProcessID(&processID));
+
+            if (processID) {
+                gckKERNEL_FindDatabase(Kernel, processID, gcvFALSE, &database);
+
+                if (database && database->matchCaptureOnly)
+                    address = Kernel->device->contiguousBases[Kernel->device->memIndex] + offset;
+                else
+                    address = Kernel->contiguousBaseAddresses[Kernel->device->memIndex] + offset;
+    }
+#else
             address = Kernel->contiguousBaseAddresses[Kernel->device->memIndex] + offset;
+#endif
             break;
         }
 
@@ -3687,6 +3709,10 @@ gckVIDMEM_NODE_LockCPU(IN gckKERNEL Kernel, IN gckVIDMEM_NODE NodeObject,
     gcuVIDMEM_NODE_PTR node;
     gckVIDMEM_BLOCK    vidMemBlock;
     gctPOINTER         logical = gcvNULL;
+#if gcdCAPTURE_ONLY_MODE
+    gcsDATABASE_PTR database = gcvNULL;
+    gctUINT32 processID;
+#endif
 
     gcmkHEADER_ARG("NodeObject=%p", NodeObject);
 
@@ -3721,9 +3747,24 @@ gckVIDMEM_NODE_LockCPU(IN gckKERNEL Kernel, IN gckVIDMEM_NODE NodeObject,
             gcmkONERROR(gcvSTATUS_INVALID_REQUEST);
 #endif
 
+#if gcdCAPTURE_ONLY_MODE
+        gcmkONERROR(gckOS_GetProcessID(&processID));
+
+        if (processID)
+            gcmkONERROR(gckKERNEL_FindDatabase(Kernel, processID, gcvFALSE, &database));
+#endif
+
         if (FromUser) {
 #if gcdCAPTURE_ONLY_MODE
-            node->VidMem.logical = NodeObject->captureLogical;
+            if (database && database->matchCaptureOnly)
+                node->VidMem.logical = NodeObject->captureLogical;
+            else
+                /* Map video memory pool to user space. */
+                gcmkONERROR(gckKERNEL_MapVideoMemory(Kernel, gcvTRUE, node->VidMem.pool,
+                                                     node->VidMem.physical,
+                                                     node->VidMem.offset,
+                                                     node->VidMem.bytes,
+                                                     &node->VidMem.logical));
 #else
             /* Map video memory pool to user space. */
             gcmkONERROR(gckKERNEL_MapVideoMemory(Kernel, gcvTRUE, node->VidMem.pool,
@@ -3732,13 +3773,18 @@ gckVIDMEM_NODE_LockCPU(IN gckKERNEL Kernel, IN gckVIDMEM_NODE NodeObject,
                                                  node->VidMem.bytes,
                                                  &node->VidMem.logical));
 #endif
-
             logical = node->VidMem.logical;
         } else {
             /* Map video memory pool to kernel space. */
             if (!node->VidMem.kvaddr) {
 #if gcdCAPTURE_ONLY_MODE
-                gcmkONERROR(gckOS_Allocate(os, node->VidMem.bytes, &node->VidMem.kvaddr));
+                if (database && database->matchCaptureOnly)
+                    gcmkONERROR(gckOS_Allocate(os, node->VidMem.bytes, &node->VidMem.kvaddr));
+                else
+                    gcmkONERROR(gckOS_CreateKernelMapping(os, node->VidMem.parent->physical,
+                                                              node->VidMem.offset,
+                                                              node->VidMem.bytes,
+                                                              &node->VidMem.kvaddr));
 #else
                 gcmkONERROR(gckOS_CreateKernelMapping(os, node->VidMem.parent->physical,
                                                       node->VidMem.offset,
@@ -3818,6 +3864,9 @@ gckVIDMEM_NODE_UnlockCPU(IN gckKERNEL Kernel,
     gctBOOL            acquired = gcvFALSE;
     gcuVIDMEM_NODE_PTR node;
     gckVIDMEM_BLOCK    vidMemBlock;
+#if gcdCAPTURE_ONLY_MODE
+    gcsDATABASE_PTR database = gcvNULL;
+#endif
 
     gcmkHEADER_ARG("NodeObject=%p", NodeObject);
 
@@ -3840,8 +3889,22 @@ gckVIDMEM_NODE_UnlockCPU(IN gckKERNEL Kernel,
 
     if (node->VidMem.parent->object.type == gcvOBJ_VIDMEM) {
         if (FromUser) {
-#if gcdCAPTURE_ONLY_MODE || defined __QNXNTO__
+#if defined __QNXNTO__
             /* Do nothing here. */
+#else
+#if gcdCAPTURE_ONLY_MODE
+            gcmkONERROR(gckKERNEL_FindDatabase(Kernel, ProcessID, gcvFALSE, &database));
+
+            if (database && !database->matchCaptureOnly) {
+                if (!Defer) {
+                    /* Unmap the video memory. */
+                    gckKERNEL_UnmapVideoMemory(Kernel, node->VidMem.pool,
+                                               node->VidMem.physical,
+                                               node->VidMem.logical,
+                                               0,
+                                               node->VidMem.bytes);
+                }
+            }
 #else
             if (!Defer) {
                 /* Unmap the video memory. */
@@ -3855,6 +3918,7 @@ gckVIDMEM_NODE_UnlockCPU(IN gckKERNEL Kernel,
                     node->VidMem.logical = gcvNULL;
                 }
             }
+#endif
 #endif
         } else {
             /*

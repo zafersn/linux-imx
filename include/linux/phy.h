@@ -27,6 +27,7 @@
 #include <linux/irqreturn.h>
 #include <linux/iopoll.h>
 #include <linux/refcount.h>
+#include <linux/android_kabi.h>
 
 #include <linux/atomic.h>
 
@@ -159,10 +160,12 @@ typedef enum {
 	PHY_INTERFACE_MODE_10GKR,
 	PHY_INTERFACE_MODE_QUSGMII,
 	PHY_INTERFACE_MODE_1000BASEKX,
+#ifndef CONFIG_IMX_GKI_FIX
 	PHY_INTERFACE_MODE_2500SGMII,
 	PHY_INTERFACE_MODE_10G_QXGMII,
 	PHY_INTERFACE_MODE_25GKR,
 	PHY_INTERFACE_MODE_40GKR4,
+#endif
 	PHY_INTERFACE_MODE_MAX,
 } phy_interface_t;
 
@@ -282,6 +285,7 @@ static inline const char *phy_modes(phy_interface_t interface)
 		return "100base-x";
 	case PHY_INTERFACE_MODE_QUSGMII:
 		return "qusgmii";
+#ifndef CONFIG_IMX_GKI_FIX
 	case PHY_INTERFACE_MODE_2500SGMII:
 		return "sgmii-2500";
 	case PHY_INTERFACE_MODE_10G_QXGMII:
@@ -290,6 +294,7 @@ static inline const char *phy_modes(phy_interface_t interface)
 		return "25gbase-kr";
 	case PHY_INTERFACE_MODE_40GKR4:
 		return "40gbase-kr4";
+#endif
 	default:
 		return "unknown";
 	}
@@ -379,11 +384,13 @@ struct mii_bus {
 	int (*read)(struct mii_bus *bus, int addr, int regnum);
 	/** @write: Perform a write transfer on the bus */
 	int (*write)(struct mii_bus *bus, int addr, int regnum, u16 val);
+#ifndef CONFIG_IMX_GKI_FIX
 	/** @read_c45: Perform a C45 read transfer on the bus */
 	int (*read_c45)(struct mii_bus *bus, int addr, int devnum, int regnum);
 	/** @write_c45: Perform a C45 write transfer on the bus */
 	int (*write_c45)(struct mii_bus *bus, int addr, int devnum,
 			 int regnum, u16 val);
+#endif
 	/** @reset: Perform a reset of the bus */
 	int (*reset)(struct mii_bus *bus);
 
@@ -750,6 +757,11 @@ struct phy_device {
 	/* MACsec management functions */
 	const struct macsec_ops *macsec_ops;
 #endif
+
+	ANDROID_KABI_RESERVE(1);
+	ANDROID_KABI_RESERVE(2);
+	ANDROID_KABI_RESERVE(3);
+	ANDROID_KABI_RESERVE(4);
 };
 
 static inline struct phy_device *to_phy_device(const struct device *dev)
@@ -868,6 +880,7 @@ struct phy_driver {
 	 */
 	int (*config_aneg)(struct phy_device *phydev);
 
+#ifndef CONFIG_IMX_GKI_FIX
 	/**
 	 * @validate_inband_aneg: Report what types of in-band auto-negotiation
 	 * are available for the given PHY interface type. Returns a bit mask
@@ -883,6 +896,7 @@ struct phy_driver {
 	 * requires it: (Q)SGMII, USXGMII, 1000Base-X, etc.
 	 */
 	int (*config_inband_aneg)(struct phy_device *phydev, bool enabled);
+#endif
 
 	/** @aneg_done: Determines the auto negotiation result */
 	int (*aneg_done)(struct phy_device *phydev);
@@ -1014,6 +1028,9 @@ struct phy_driver {
 	int (*get_sqi)(struct phy_device *dev);
 	/** @get_sqi_max: Get the maximum signal quality indication */
 	int (*get_sqi_max)(struct phy_device *dev);
+
+	ANDROID_KABI_RESERVE(1);
+	ANDROID_KABI_RESERVE(2);
 };
 #define to_phy_driver(d) container_of(to_mdio_common_driver(d),		\
 				      struct phy_driver, mdiodrv)

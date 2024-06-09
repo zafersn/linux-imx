@@ -527,19 +527,6 @@ struct fec_enet_priv_txrx_info {
 	struct  sk_buff *skb;
 };
 
-enum {
-	RX_XDP_REDIRECT = 0,
-	RX_XDP_PASS,
-	RX_XDP_DROP,
-	RX_XDP_TX,
-	RX_XDP_TX_ERRORS,
-	TX_XDP_XMIT,
-	TX_XDP_XMIT_ERRORS,
-
-	/* The following must be the last one */
-	XDP_STATS_TOTAL,
-};
-
 enum fec_txbuf_type {
 	FEC_TXBUF_T_SKB,
 	FEC_TXBUF_T_XDP_TX,
@@ -574,7 +561,6 @@ struct fec_enet_priv_rx_q {
 	/* page_pool */
 	struct page_pool *page_pool;
 	struct xdp_rxq_info xdp_rxq;
-	u32 stats[XDP_STATS_TOTAL];
 
 	/* rx queue number, in the range 0-7 */
 	u8 id;

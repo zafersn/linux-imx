@@ -330,6 +330,8 @@ struct mem_cgroup {
 	struct lru_gen_mm_list mm_list;
 #endif
 
+	ANDROID_OEM_DATA_ARRAY(1, 2);
+
 	struct mem_cgroup_per_node *nodeinfo[];
 };
 
@@ -795,6 +797,11 @@ static inline void obj_cgroup_put(struct obj_cgroup *objcg)
 	percpu_ref_put(&objcg->refcnt);
 }
 
+static inline bool mem_cgroup_tryget(struct mem_cgroup *memcg)
+{
+	return !memcg || css_tryget(&memcg->css);
+}
+
 static inline void mem_cgroup_put(struct mem_cgroup *memcg)
 {
 	if (memcg)
@@ -902,7 +909,7 @@ unsigned long mem_cgroup_get_zone_lru_size(struct lruvec *lruvec,
 	return READ_ONCE(mz->lru_zone_size[zone_idx][lru]);
 }
 
-void mem_cgroup_handle_over_high(void);
+void mem_cgroup_handle_over_high(gfp_t gfp_mask);
 
 unsigned long mem_cgroup_get_max(struct mem_cgroup *memcg);
 
@@ -1295,6 +1302,11 @@ static inline void obj_cgroup_put(struct obj_cgroup *objcg)
 {
 }
 
+static inline bool mem_cgroup_tryget(struct mem_cgroup *memcg)
+{
+	return true;
+}
+
 static inline void mem_cgroup_put(struct mem_cgroup *memcg)
 {
 }
@@ -1437,7 +1449,7 @@ static inline void mem_cgroup_unlock_pages(void)
 	rcu_read_unlock();
 }
 
-static inline void mem_cgroup_handle_over_high(void)
+static inline void mem_cgroup_handle_over_high(gfp_t gfp_mask)
 {
 }
 
